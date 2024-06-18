@@ -1,0 +1,148 @@
+substitutions:
+  dev: T42
+
+esphome:
+  name: t42tv
+  platform: ESP8266
+  board: esp07s
+
+  on_boot:
+    - light.turn_on:
+        id: backlight
+        brightness: 40%
+
+external_components:
+  - source:
+      type: git
+      url: https://github.com/nikito7/__esphome-smalltv.git
+      ref: st7789_nobuffer_202312
+    components: [st7789v]
+
+wifi:
+
+  ssid: !secret wifi_ssid
+  password: !secret wifi_key
+
+  ap:
+    ssid: "Fallback ${dev}"
+    password: !secret wifi_key
+
+captive_portal:
+
+#logger:
+
+api:
+
+ota:
+
+time:
+
+  - platform: homeassistant
+    id: esptime
+
+text_sensor:
+
+  - platform: version
+    name: "${dev} ESPHome Version"
+    hide_timestamp: true
+
+button:
+
+  - platform: restart
+    name: "${dev} ESP Restart"
+
+sensor:
+
+  - platform: template
+    name: "${dev} ESP Free Heap"
+    lambda: |-
+      int heap = ESP.getFreeHeap();
+      return heap / 1024.0;
+    unit_of_measurement: "kB"
+    icon: mdi:chip
+    state_class: measurement
+
+  - platform: wifi_signal
+    name: "${dev} ESP Signal"
+    unit_of_measurement: "dB"
+    state_class: measurement
+
+  - platform: uptime
+    name: "${dev} ESP Uptime"
+    filters:
+      - lambda: return x/3600;
+    unit_of_measurement: "h"
+    accuracy_decimals: 1
+    device_class: ""
+
+###
+
+output:
+
+  - platform: esp8266_pwm
+    pin: 5
+    inverted: true
+    id: pwm_output
+
+light:
+
+  - platform: monochromatic
+    output: pwm_output
+    name: "${dev} Backlight"
+    id: backlight
+
+font:
+
+  - file: 'fonts/lucida.ttf'
+    id: font1
+    size: 20
+
+  - file: 'fonts/lucida.ttf'
+    id: clk
+    size: 48
+
+color:
+
+    - id: color_green
+      red: 0%
+      green: 100%
+      blue: 0%
+
+    - id: color_white
+      red: 100%
+      green: 100%
+      blue: 100%
+
+    - id: color_black
+      red: 0%
+      green: 0%
+      blue: 0%
+
+spi:
+  clk_pin: 14
+  mosi_pin: 13
+  interface: hardware
+  id: spihwd
+
+display:
+  - platform: st7789v
+    model: "Custom"
+    spi_id: spihwd
+    spi_mode : mode3
+    dc_pin: 0
+    reset_pin: 2
+    width: 240
+    height: 240
+    offset_height: 0
+    offset_width: 0
+    update_interval: 10s
+    eightbitcolor: true
+        
+    lambda: |-
+      it.strftime(120, 115, id(clk), id(color_white), TextAlign::CENTER, "%H:%M", id(esptime).now());
+      it.rectangle(0,  0, it.get_width()-1, it.get_height()-10, id(color_green));
+
+
+###
+##
+#
